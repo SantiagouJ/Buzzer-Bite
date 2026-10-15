@@ -26,6 +26,7 @@ import { UsersModule } from "./users/users.module";
         database: configService.get<string>("DB_DATABASE") ?? "buzzer_bite",
         autoLoadEntities: true,
         synchronize: true,
+        ssl: configService.get<string>("NODE_ENV") === "production",
       }),
     }),
     UsersModule,
