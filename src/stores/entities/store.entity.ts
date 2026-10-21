@@ -7,8 +7,9 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { UserEntity } from '../../users/entities/user.entity';
+import { decimalTransformer } from '../../common/decimal.transformer';
 import { PackEntity } from '../../packs/entities/pack.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 
 @Entity('stores')
 export class StoreEntity {
@@ -21,10 +22,20 @@ export class StoreEntity {
   @Column({ length: 255 })
   address!: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    transformer: decimalTransformer,
+  })
   latitude!: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 7 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 7,
+    transformer: decimalTransformer,
+  })
   longitude!: number;
 
   @Column({ length: 50 })

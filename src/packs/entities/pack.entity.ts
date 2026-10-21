@@ -7,8 +7,9 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { decimalTransformer } from '../../common/decimal.transformer';
+import { OrderEntity } from '../../reservations/entities/reservation.entity';
 import { StoreEntity } from '../../stores/entities/store.entity';
-import { OrderEntity } from '../../reservations/entities/order.entity';
 
 export enum PackStatus {
   AVAILABLE = 'AVAILABLE',
@@ -25,12 +26,24 @@ export class PackEntity {
   title!: string;
 
   @Column({ type: 'text', nullable: true })
-  description!: string;
+  description!: string | null;
 
-  @Column({ name: 'original_price', type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'original_price',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   original_price!: number;
 
-  @Column({ name: 'discount_price', type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'discount_price',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   discount_price!: number;
 
   @Column({ type: 'int', default: 0 })

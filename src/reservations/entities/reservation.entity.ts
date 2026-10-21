@@ -6,8 +6,9 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { UserEntity } from '../../users/entities/user.entity';
+import { decimalTransformer } from '../../common/decimal.transformer';
 import { PackEntity } from '../../packs/entities/pack.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 
 export enum OrderStatus {
   RESERVED = 'RESERVED',
@@ -24,7 +25,13 @@ export class OrderEntity {
   @Column({ type: 'int', default: 1 })
   quantity!: number;
 
-  @Column({ name: 'total_price', type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    name: 'total_price',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   total_price!: number;
 
   @Column({ name: 'verification_code', length: 64, unique: true })

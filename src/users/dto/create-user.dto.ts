@@ -1,13 +1,11 @@
 import {
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../entities/user.entity';
 
 export class RegisterDto {
   @IsEmail({}, { message: 'El correo electrónico debe tener un formato válido' })
@@ -29,9 +27,4 @@ export class RegisterDto {
   @IsString()
   @MaxLength(30)
   phone?: string;
-
-  @IsEnum(UserRole, {
-    message: 'El rol debe ser consumer, merchant o admin',
-  })
-  role!: UserRole;
 }

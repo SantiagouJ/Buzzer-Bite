@@ -1,11 +1,11 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsUUID } from 'class-validator';
 
 export class CreateFavoriteDto {
-  @IsString()
+  @IsUUID('4', { message: 'El ID del usuario debe ser un UUID válido' })
   @IsNotEmpty({ message: 'El ID del usuario es obligatorio' })
-  userId!: string;
+  user_id!: string;
 
-  @IsString()
+  @IsUUID('4', { message: 'El ID de la tienda debe ser un UUID válido' })
   @IsNotEmpty({ message: 'El ID de la tienda es obligatorio' })
-  storeId!: string;
+  store_id!: string;
 }

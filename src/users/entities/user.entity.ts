@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { StoreEntity } from '../../stores/entities/store.entity';
-import { OrderEntity } from '../../reservations/entities/order.entity';
+import { OrderEntity } from '../../reservations/entities/reservation.entity';
 
 export enum UserRole {
   CONSUMER = 'consumer',
@@ -30,7 +30,7 @@ export class UserEntity {
   full_name!: string;
 
   @Column({ length: 30, nullable: true })
-  phone!: string;
+  phone!: string | null;
 
   @Column({
     type: 'enum',

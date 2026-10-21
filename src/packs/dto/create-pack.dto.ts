@@ -4,13 +4,14 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   Min,
 } from 'class-validator';
 
 export class CreatePackDto {
-  @IsString()
+  @IsUUID('4', { message: 'El ID de la tienda debe ser un UUID válido' })
   @IsNotEmpty({ message: 'El ID de la tienda es obligatorio' })
   store_id!: string;
 

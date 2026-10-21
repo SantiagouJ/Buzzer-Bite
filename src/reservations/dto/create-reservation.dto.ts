@@ -1,16 +1,16 @@
 import {
   IsInt,
   IsNotEmpty,
-  IsString,
+  IsUUID,
   Min,
 } from 'class-validator';
 
 export class CreateOrderDto {
-  @IsString()
+  @IsUUID('4', { message: 'El ID del consumidor debe ser un UUID válido' })
   @IsNotEmpty({ message: 'El ID del consumidor es obligatorio' })
   consumer_id!: string;
 
-  @IsString()
+  @IsUUID('4', { message: 'El ID del pack debe ser un UUID válido' })
   @IsNotEmpty({ message: 'El ID del pack es obligatorio' })
   pack_id!: string;
 

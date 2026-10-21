@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { PackStatus } from '../entities/pack.entity';
 
 export class FilterPackDto {
@@ -10,7 +10,7 @@ export class FilterPackDto {
   status?: PackStatus;
 
   @IsOptional()
-  @IsString()
+  @IsUUID('4', { message: 'store_id debe ser un UUID válido' })
   store_id?: string;
 
   @Type(() => Number)

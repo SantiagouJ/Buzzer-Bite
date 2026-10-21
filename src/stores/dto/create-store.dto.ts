@@ -3,11 +3,12 @@ import {
   IsLongitude,
   IsNotEmpty,
   IsString,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 
 export class CreateStoreDto {
-  @IsString()
+  @IsUUID('4', { message: 'El ID de usuario debe ser un UUID válido' })
   @IsNotEmpty({ message: 'El ID de usuario es obligatorio' })
   user_id!: string;
 
