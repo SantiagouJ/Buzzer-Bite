@@ -5,9 +5,9 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { PacksModule } from "./packs/packs.module";
-import { ReservationsModule } from "./reservations/reservations.module";
 import { StoresModule } from "./stores/stores.module";
 import { AuthModule } from "./auth/auth.module";
+import { OrdersModule } from "./orders/orders.module";
 
 @Module({
   imports: [
@@ -32,7 +32,7 @@ import { AuthModule } from "./auth/auth.module";
     StoresModule,
     FavoritesModule,
     PacksModule,
-    ReservationsModule,
+    OrdersModule,
     AuthModule,
   ],
   controllers: [AppController],

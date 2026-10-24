@@ -5,23 +5,23 @@ import { Repository } from "typeorm";
 import { AuthService } from "../auth/auth.service";
 import { PackEntity, PackStatus } from "../packs/entities/pack.entity";
 import { ClaimOrderDto } from "./dto/claim-order.dto";
-import { CreateOrderDto } from "./dto/create-reservation.dto";
-import { UpdateOrderDto } from "./dto/update-reservation.dto";
-import { OrderEntity, OrderStatus } from "./entities/reservation.entity";
-import { ReservationRulesService } from "./reservation-rules/reservation-rules.service";
+import { CreateOrderDto } from "./dto/create-order.dto";
+import { UpdateOrderDto } from "./dto/update-order.dto";
+import { OrderEntity, OrderStatus } from "./entities/order.entity";
+import { OrderRulesService } from "./order-rules/order-rules.service";
 
 @Injectable()
-export class ReservationsService {
+export class OrdersService {
   constructor(
     @InjectRepository(OrderEntity)
-    private readonly reservationsRepository: Repository<OrderEntity>,
+    private readonly ordersRepository: Repository<OrderEntity>,
 
     @InjectRepository(PackEntity)
     private readonly packsRepository: Repository<PackEntity>,
 
     private readonly authService: AuthService,
 
-    private readonly reservationRulesService: ReservationRulesService,
+    private readonly orderRulesService: OrderRulesService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<OrderEntity> {
@@ -38,7 +38,7 @@ export class ReservationsService {
       );
     }
 
-    this.reservationRulesService.ensureCanBeReserved(
+    this.orderRulesService.ensureCanBeReserved(
       pack,
       createOrderDto.quantity,
     );
@@ -49,7 +49,7 @@ export class ReservationsService {
     }
     await this.packsRepository.save(pack);
 
-    const order = this.reservationsRepository.create({
+    const order = this.ordersRepository.create({
       consumer,
       pack,
       quantity: createOrderDto.quantity,
@@ -58,18 +58,18 @@ export class ReservationsService {
       status: OrderStatus.RESERVED,
     });
 
-    return this.reservationsRepository.save(order);
+    return this.ordersRepository.save(order);
   }
 
   async findAll(): Promise<OrderEntity[]> {
-    return this.reservationsRepository.find({
+    return this.ordersRepository.find({
       relations: { consumer: true, pack: true },
       order: { created_at: "ASC" },
     });
   }
 
   async findOne(id: string): Promise<OrderEntity> {
-    const order = await this.reservationsRepository.findOne({
+    const order = await this.ordersRepository.findOne({
       where: { id },
       relations: { consumer: true, pack: true },
     });
@@ -87,7 +87,7 @@ export class ReservationsService {
   ): Promise<OrderEntity> {
     const order = await this.findOne(id);
 
-    this.reservationRulesService.ensureCanUpdateQuantity(order);
+    this.orderRulesService.ensureCanUpdateQuantity(order);
 
     if (
       updateOrderDto.quantity !== undefined &&
@@ -96,7 +96,7 @@ export class ReservationsService {
       const delta = updateOrderDto.quantity - order.quantity;
 
       if (delta > 0 && order.pack.stock < delta) {
-        this.reservationRulesService.ensureCanBeReserved(order.pack, delta);
+        this.orderRulesService.ensureCanBeReserved(order.pack, delta);
       }
 
       order.pack.stock -= delta;
@@ -111,13 +111,13 @@ export class ReservationsService {
       await this.packsRepository.save(order.pack);
     }
 
-    return this.reservationsRepository.save(order);
+    return this.ordersRepository.save(order);
   }
 
   async claim(id: string, claimOrderDto: ClaimOrderDto): Promise<OrderEntity> {
     const order = await this.findOne(id);
 
-    this.reservationRulesService.ensureCanBeClaimed(
+    this.orderRulesService.ensureCanBeClaimed(
       order,
       claimOrderDto.verification_code,
     );
@@ -125,6 +125,6 @@ export class ReservationsService {
     order.status = OrderStatus.CLAIMED;
     order.claimed_at = new Date();
 
-    return this.reservationsRepository.save(order);
+    return this.ordersRepository.save(order);
   }
 }

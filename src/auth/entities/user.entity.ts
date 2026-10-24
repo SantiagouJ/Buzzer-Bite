@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { StoreEntity } from '../../stores/entities/store.entity';
-import { OrderEntity } from '../../reservations/entities/reservation.entity';
+import { OrderEntity } from '../../orders/entities/order.entity';
 
 export enum UserRole {
   CONSUMER = 'consumer',

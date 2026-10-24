@@ -1,13 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { ReservationsService } from "./reservations.service";
+import { OrdersService } from "./orders.service";
 
-describe("ReservationsService", () => {
-  let service: ReservationsService;
+describe("OrdersService", () => {
+  let service: OrdersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ReservationsService,
+        OrdersService,
         {
           provide: "OrderEntityRepository",
           useValue: {},
@@ -15,7 +15,7 @@ describe("ReservationsService", () => {
       ],
     }).compile();
 
-    service = module.get<ReservationsService>(ReservationsService);
+    service = module.get<OrdersService>(OrdersService);
   });
 
   it("should be defined", () => {

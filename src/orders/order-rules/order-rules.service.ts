@@ -1,9 +1,9 @@
 import { ConflictException, Injectable } from "@nestjs/common";
-import { OrderStatus } from "../entities/reservation.entity";
+import { OrderStatus } from "../entities/order.entity";
 import { PackEntity, PackStatus } from "../../packs/entities/pack.entity";
 
 @Injectable()
-export class ReservationRulesService {
+export class OrderRulesService {
   ensureCanBeReserved(pack: PackEntity, quantity: number): void {
     if (pack.status !== PackStatus.AVAILABLE || pack.stock < quantity) {
       throw new ConflictException(
