@@ -1,4 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuthService } from "../auth/auth.service";
+import { StoreRulesService } from "./store-rules/store-rules.service";
 import { StoresService } from "./stores.service";
 
 describe("StoresService", () => {
@@ -10,6 +12,14 @@ describe("StoresService", () => {
         StoresService,
         {
           provide: "StoreEntityRepository",
+          useValue: {},
+        },
+        {
+          provide: AuthService,
+          useValue: {},
+        },
+        {
+          provide: StoreRulesService,
           useValue: {},
         },
       ],

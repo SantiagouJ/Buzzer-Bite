@@ -1,4 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuthService } from "../auth/auth.service";
+import { StoresService } from "../stores/stores.service";
+import { FavoriteRulesService } from "./favorite-rules/favorite-rules.service";
 import { FavoritesService } from "./favorites.service";
 
 describe("FavoritesService", () => {
@@ -10,6 +13,18 @@ describe("FavoritesService", () => {
         FavoritesService,
         {
           provide: "FavoriteEntityRepository",
+          useValue: {},
+        },
+        {
+          provide: AuthService,
+          useValue: {},
+        },
+        {
+          provide: StoresService,
+          useValue: {},
+        },
+        {
+          provide: FavoriteRulesService,
           useValue: {},
         },
       ],

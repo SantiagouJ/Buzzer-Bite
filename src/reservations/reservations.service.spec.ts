@@ -9,7 +9,7 @@ describe("ReservationsService", () => {
       providers: [
         ReservationsService,
         {
-          provide: "ReservationEntityRepository",
+          provide: "OrderEntityRepository",
           useValue: {},
         },
       ],

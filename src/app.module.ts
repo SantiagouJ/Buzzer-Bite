@@ -7,7 +7,7 @@ import { FavoritesModule } from "./favorites/favorites.module";
 import { PacksModule } from "./packs/packs.module";
 import { ReservationsModule } from "./reservations/reservations.module";
 import { StoresModule } from "./stores/stores.module";
-import { UsersModule } from "./users/users.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -25,15 +25,15 @@ import { UsersModule } from "./users/users.module";
         password: configService.get<string>("DB_PASSWORD") ?? "postgres",
         database: configService.get<string>("DB_DATABASE") ?? "buzzer_bite",
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: configService.get<string>("DB_SYNC") === "true",
         ssl: configService.get<string>("NODE_ENV") === "production",
       }),
     }),
-    UsersModule,
     StoresModule,
     FavoritesModule,
     PacksModule,
     ReservationsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
