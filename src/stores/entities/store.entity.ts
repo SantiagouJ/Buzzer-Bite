@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { decimalTransformer } from '../../common/decimal.transformer';
 import { PackEntity } from '../../packs/entities/pack.entity';
-import { UserEntity } from '../../users/entities/user.entity';
+import { UserEntity } from '../../auth/entities/user.entity';
 
 @Entity('stores')
 export class StoreEntity {

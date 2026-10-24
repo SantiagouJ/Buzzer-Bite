@@ -3,19 +3,24 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
-} from 'class-validator';
+} from "class-validator";
 
 export class RegisterDto {
-  @IsEmail({}, { message: 'El correo electrónico debe tener un formato válido' })
+  @IsEmail()
+  @MaxLength(150)
   @IsNotEmpty()
   email!: string;
 
   @IsString()
+  @MinLength(15)
+  @MaxLength(128)
   @IsNotEmpty()
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
-  @MaxLength(50)
+  @Matches(/^[a-zA-Z0-9\s-_]+$/, {
+    message: "El campo solo puede contener letras, números, espacios y guiones",
+  })
   password!: string;
 
   @IsString()

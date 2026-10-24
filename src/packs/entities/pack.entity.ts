@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { decimalTransformer } from '../../common/decimal.transformer';
-import { OrderEntity } from '../../reservations/entities/reservation.entity';
+import { OrderEntity } from '../../orders/entities/order.entity';
 import { StoreEntity } from '../../stores/entities/store.entity';
 
 export enum PackStatus {

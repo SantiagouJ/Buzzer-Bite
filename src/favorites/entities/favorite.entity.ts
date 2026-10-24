@@ -7,7 +7,7 @@ import {
   Unique,
 } from "typeorm";
 import { StoreEntity } from "../../stores/entities/store.entity";
-import { UserEntity } from "../../users/entities/user.entity";
+import { UserEntity } from "../../auth/entities/user.entity";
 
 @Entity("favorites")
 @Unique("UQ_favorites_user_store", ["user", "store"])
