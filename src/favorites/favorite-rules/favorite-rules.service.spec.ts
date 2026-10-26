@@ -1,20 +1,26 @@
+import { beforeEach, describe, expect, it } from "@jest/globals";
+import { ConflictException } from "@nestjs/common";
 import { FavoriteEntity } from "../entities/favorite.entity";
 import { FavoriteRulesService } from "./favorite-rules.service";
 
 describe("FavoriteRulesService", () => {
-  const service = new FavoriteRulesService();
+  let service: FavoriteRulesService;
 
-  it("allows a store that is not a favorite yet", () => {
+  beforeEach(() => {
+    service = new FavoriteRulesService();
+  });
+
+  it("permite asociar una tienda que aun no es favorita", () => {
     expect(() =>
       service.ensureNotAlreadyFavorite(null, "store-id", "user-id"),
     ).not.toThrow();
   });
 
-  it("rejects a store that is already a favorite", () => {
+  it("rechaza asociar una tienda que ya es favorita del usuario", () => {
     const favorite = { id: "favorite-id" } as FavoriteEntity;
 
     expect(() =>
       service.ensureNotAlreadyFavorite(favorite, "store-id", "user-id"),
-    ).toThrow();
+    ).toThrow(ConflictException);
   });
 });
