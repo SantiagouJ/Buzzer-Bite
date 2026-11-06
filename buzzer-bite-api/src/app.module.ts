@@ -26,7 +26,10 @@ import { OrdersModule } from "./orders/orders.module";
         database: configService.get<string>("DB_DATABASE") ?? "buzzer_bite",
         autoLoadEntities: true,
         synchronize: configService.get<string>("DB_SYNC") === "true",
-        ssl: configService.get<string>("NODE_ENV") === "production",
+        ssl:
+          configService.get<string>("NODE_ENV") === "production"
+            ? { rejectUnauthorized: false }
+            : false,
       }),
     }),
     StoresModule,

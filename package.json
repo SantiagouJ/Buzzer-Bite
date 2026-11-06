@@ -1,0 +1,9 @@
+{
+  "name": "buzzer-bite",
+  "private": true,
+  "scripts": {
+    "build": "npm ci --prefix buzzer-bite-api && npm run build --prefix buzzer-bite-api",
+    "start": "npm run start:prod --prefix buzzer-bite-api",
+    "start:prod": "npm run start:prod --prefix buzzer-bite-api"
+  }
+}
