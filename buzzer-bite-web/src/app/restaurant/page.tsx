@@ -1,3 +1,9 @@
+// importamos utilidades de servidor de nextjs para cookies redireccion y cache
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+
+// arreglo fijo con las horas disponibles para los selectores de recogida
 const PICKUP_HOURS = [
   { value: "12:00", label: "12 PM" },
   { value: "13:00", label: "1 PM" },
@@ -13,9 +19,144 @@ const PICKUP_HOURS = [
   { value: "23:00", label: "11 PM" },
 ] as const;
 
-export default function RestaurantDashboardPage() {
+// definimos los tipos de props para leer mensajes de error o exito desde la url
+type DashboardPageProps = {
+  searchParams: Promise<{ error?: string; created?: string }>;
+};
+
+// server action que se ejecuta en nextjs al enviar el formulario de crear pack
+async function createPack(formData: FormData) {
+  "use server";
+
+  // leemos el token guardado en la cookie por el login de santiago
+  const cookieStore = await cookies();
+  const token = cookieStore.get("coffee_token")?.value;
+  if (!token) redirect("/login");
+
+  // sacamos los valores que escribio el restaurante en el formulario
+  const packType = String(formData.get("pack_type") ?? "Sorpresa");
+  const rawPrice = String(formData.get("discount_price") ?? "0");
+  // limpiamos signos de pesos y puntos para mandar un numero limpio al backend
+  const discountPrice = Number(rawPrice.replace(/[^0-9]/g, ""));
+  const stock = Number(formData.get("stock") ?? 1);
+  const pickupStart = String(formData.get("pickup_start") ?? "17:00");
+  const pickupEnd = String(formData.get("pickup_end") ?? "22:00");
+
+  // validamos rapido que precio y stock sean numeros validos mayores a cero
+  if (!discountPrice || discountPrice <= 0 || !stock || stock <= 0) {
+    redirect("/restaurant?error=invalid");
+  }
+
+  // consultamos primero la tienda asociada al comerciante autenticado
+  const storeRes = await fetch(`${process.env.BUZZER_BITE_API_URL}/stores/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  }).catch(() => null);
+
+  // si el token vencio mandamos al login
+  if (storeRes?.status === 401) redirect("/login");
+
+  const storeData = storeRes?.ok ? await storeRes.json().catch(() => null) : null;
+  const storeId = storeData?.id;
+
+  // construimos el objeto con los campos que espera el dto de nestjs
+  const payload = {
+    store_id: storeId,
+    title: packType === "Sorpresa" ? "Pack Sorpresa" : "Pack Fijo",
+    description: `Pack ${packType} disponible para retiro en tienda`,
+    original_price: Math.round(discountPrice * 1.4),
+    discount_price: discountPrice,
+    stock: stock,
+    pickup_start: pickupStart,
+    pickup_end: pickupEnd,
+  };
+
+  // enviamos la peticion post al endpoint de packs en nestjs
+  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => null);
+
+  // si el backend responde 401 lo mandamos a iniciar sesion
+  if (response?.status === 401) redirect("/login");
+
+  // si falla la validacion o el servidor devolvio error avisamos en pantalla
+  if (!response?.ok) {
+    redirect("/restaurant?error=api");
+  }
+
+  // refrescamos la cache de packs y tablero y redirigimos al listado de packs
+  revalidatePath("/restaurant");
+  revalidatePath("/restaurant/packs");
+  redirect("/restaurant/packs?created=1");
+}
+
+// componente de servidor principal del tablero del restaurante
+export default async function RestaurantDashboardPage({
+  searchParams,
+}: DashboardPageProps) {
+  // verificamos que exista la cookie de sesion antes de pedir datos
+  const cookieStore = await cookies();
+  const token = cookieStore.get("coffee_token")?.value;
+  if (!token) redirect("/login");
+
+  // leemos los parametros de la url para mostrar alertas si hubo error
+  const { error } = await searchParams;
+
+  // consultamos los packs y las ordenes desde el backend en paralelo
+  const [packsRes, ordersRes] = await Promise.all([
+    fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).catch(() => null),
+    fetch(`${process.env.BUZZER_BITE_API_URL}/orders`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).catch(() => null),
+  ]);
+
+  // si alguno responde 401 la sesion expiro y redirigimos al login
+  if (packsRes?.status === 401 || ordersRes?.status === 401) {
+    redirect("/login");
+  }
+
+  // convertimos las respuestas a arreglos seguros
+  const packsData = packsRes?.ok ? await packsRes.json().catch(() => null) : null;
+  const ordersData = ordersRes?.ok ? await ordersRes.json().catch(() => null) : null;
+
+  const packs = Array.isArray(packsData) ? packsData : [];
+  const orders = Array.isArray(ordersData) ? ordersData : [];
+
+  // calculamos las metricas reales usando filter y length como vimos en clase
+  const activePacksCount = packs.filter(
+    (pack: { status?: string; stock?: number }) =>
+      pack.status === "AVAILABLE" || (pack.stock ?? 0) > 0
+  ).length;
+
+  const claimedOrders = orders.filter(
+    (order: { status?: string }) => order.status === "CLAIMED"
+  );
+  const soldTodayCount = claimedOrders.length;
+
+  // sumamos el total de dinero ganado en ordenes entregadas
+  const totalEarnings = claimedOrders.reduce(
+    (acc: number, order: { total_price?: number }) =>
+      acc + Number(order.total_price ?? 0),
+    0
+  );
+  // formateamos ganancias en miles por ejemplo 144k si es mayor a mil
+  const formattedEarnings =
+    totalEarnings >= 1000
+      ? `$${Math.round(totalEarnings / 1000)}k`
+      : `$${totalEarnings}`;
+
   return (
     <main className="mx-auto flex w-full max-w-[400px] flex-col items-start gap-4 px-5 pt-[84px] pb-28">
+      {/* logo superior centrado */}
       <div className="flex h-12 w-full items-start justify-center">
         <img src="/brand/logo.svg" alt="" width={48} height={45.7019} />
       </div>
@@ -24,38 +165,59 @@ export default function RestaurantDashboardPage() {
         Tablero
       </h1>
 
+      {/* mensajes de alerta si falla la creacion del pack */}
+      {error === "invalid" && (
+        <p role="alert" className="text-[13px] font-normal leading-[18px] text-[#ff8f8f]">
+          Revisa que el precio y la cantidad sean mayores a cero
+        </p>
+      )}
+      {error === "api" && (
+        <p role="alert" className="text-[13px] font-normal leading-[18px] text-[#ff8f8f]">
+          No se pudo crear el pack verifica los datos o la conexion con el servidor
+        </p>
+      )}
+
+      {/* fila con las 3 metricas calculadas desde la api */}
       <section
         aria-label="Métricas del restaurante"
         className="flex h-[68px] w-full items-start gap-[25px] whitespace-nowrap"
       >
         <div className="flex flex-col items-start gap-1 rounded-[18px] py-3">
-          <p className="text-[20px] font-semibold leading-6 text-[#f3f6f4]">2</p>
+          <p className="text-[20px] font-semibold leading-6 text-[#f3f6f4]">
+            {activePacksCount}
+          </p>
           <p className="text-[12px] font-normal leading-4 text-[#8e9892]">
             Packs Activos
           </p>
         </div>
 
         <div className="flex flex-col items-start gap-1 rounded-[18px] py-3">
-          <p className="text-[20px] font-bold leading-6 text-[#f3f6f4]">12</p>
+          <p className="text-[20px] font-bold leading-6 text-[#f3f6f4]">
+            {soldTodayCount}
+          </p>
           <p className="text-[12px] font-normal leading-4 text-[#8e9892]">
             Vendidos Hoy
           </p>
         </div>
 
         <div className="flex flex-col items-start justify-center gap-1 rounded-[18px] py-3">
-          <p className="text-[20px] font-bold leading-6 text-[#2ee07a]">$144k</p>
+          <p className="text-[20px] font-bold leading-6 text-[#2ee07a]">
+            {formattedEarnings}
+          </p>
           <p className="text-[12px] font-normal leading-4 text-[#8e9892]">
             Ganancias
           </p>
         </div>
       </section>
 
-      <form className="flex w-full flex-col items-start gap-[25px]">
+      {/* formulario conectado a la server action createPack */}
+      <form action={createPack} className="flex w-full flex-col items-start gap-[25px]">
         <div className="flex w-full flex-col items-start gap-[22px]">
           <h2 className="text-[18px] font-semibold leading-6 tracking-[-0.1px] text-[#f3f6f4]">
             Nuevo pack
           </h2>
 
+          {/* bloque para subir archivo de imagen */}
           <div className="flex w-full flex-col items-start gap-2">
             <label
               htmlFor="image"
@@ -81,6 +243,7 @@ export default function RestaurantDashboardPage() {
             </label>
           </div>
 
+          {/* selector radio entre pack sorpresa y pack fijo */}
           <fieldset className="flex w-full flex-col items-start gap-2">
             <legend className="mb-2 text-[12px] font-medium leading-4 tracking-[0.35px] text-[#8e9892]">
               TIPO DE PAQUETE
@@ -109,6 +272,7 @@ export default function RestaurantDashboardPage() {
             </div>
           </fieldset>
 
+          {/* campo de precio en pesos colombianos */}
           <div className="flex w-full flex-col items-start gap-2">
             <label
               htmlFor="discount_price"
@@ -127,6 +291,7 @@ export default function RestaurantDashboardPage() {
             />
           </div>
 
+          {/* control de cantidad disponible */}
           <div className="flex w-full flex-col items-start gap-2">
             <label
               htmlFor="stock"
@@ -162,6 +327,7 @@ export default function RestaurantDashboardPage() {
             </div>
           </div>
 
+          {/* selectores de hora de inicio y fin de recogida */}
           <div className="flex w-full flex-col items-start gap-2">
             <span className="text-[12px] font-medium leading-4 tracking-[0.35px] text-[#8e9892]">
               HORA DE RECOGIDA
@@ -224,6 +390,7 @@ export default function RestaurantDashboardPage() {
           </div>
         </div>
 
+        {/* boton principal para enviar el formulario */}
         <button
           type="submit"
           className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f3f6f4] py-4 text-[16px] font-semibold leading-[22px] text-[#0b0d0c]"
