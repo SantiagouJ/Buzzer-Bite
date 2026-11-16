@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { ConfigService } from "@nestjs/config";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AuthActor } from "../auth/auth-actor";
 import { UserRole } from "../auth/entities/user.entity";
@@ -16,12 +17,14 @@ const merchant: AuthActor = {
   id: "merchant-uuid-1",
   email: "merchant@buzzerbite.com",
   role: UserRole.MERCHANT,
+  location: null,
 };
 
 const consumer: AuthActor = {
   id: "consumer-uuid-1",
   email: "consumer@buzzerbite.com",
   role: UserRole.CONSUMER,
+  location: null,
 };
 
 describe("PacksService", () => {
@@ -76,6 +79,10 @@ describe("PacksService", () => {
         {
           provide: PackRulesService,
           useValue: packRulesServiceMock,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn() },
         },
       ],
     }).compile();

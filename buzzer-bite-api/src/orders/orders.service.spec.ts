@@ -14,7 +14,7 @@ import { OrderRulesService } from "./order-rules/order-rules.service";
 import { OrdersService } from "./orders.service";
 
 function actor(id: string, role: UserRole): AuthActor {
-  return { id, email: `${id}@buzzerbite.com`, role };
+  return { id, email: `${id}@buzzerbite.com`, role, location: null };
 }
 
 describe("OrdersService", () => {

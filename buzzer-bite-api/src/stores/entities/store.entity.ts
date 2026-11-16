@@ -41,6 +41,9 @@ export class StoreEntity {
   @Column({ length: 50 })
   category!: string;
 
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  image_url!: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

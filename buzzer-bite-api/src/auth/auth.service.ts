@@ -30,6 +30,7 @@ export class AuthService {
       password_hash: passwordHash,
       full_name: dto.full_name,
       phone: dto.phone ?? null,
+      location: dto.location?.trim() || null,
       role: dto.role ?? UserRole.CONSUMER,
     });
 
@@ -40,6 +41,7 @@ export class AuthService {
         email: savedUser.email,
         full_name: savedUser.full_name,
         phone: savedUser.phone,
+        location: savedUser.location,
         role: savedUser.role,
       };
     } catch (error) {

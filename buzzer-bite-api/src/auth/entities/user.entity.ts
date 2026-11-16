@@ -31,6 +31,9 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 30, nullable: true })
   phone!: string | null;
 
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  location!: string | null;
+
   @Column({
     type: 'enum',
     enum: UserRole,

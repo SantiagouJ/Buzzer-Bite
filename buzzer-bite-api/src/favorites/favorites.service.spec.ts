@@ -14,12 +14,14 @@ const consumer: AuthActor = {
   id: "user-uuid-1",
   email: "consumer@buzzerbite.com",
   role: UserRole.CONSUMER,
+  location: null,
 };
 
 const merchant: AuthActor = {
   id: "merchant-uuid-1",
   email: "merchant@buzzerbite.com",
   role: UserRole.MERCHANT,
+  location: null,
 };
 
 describe("FavoritesService", () => {
