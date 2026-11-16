@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 export default function AppHeader() {
   const pathname = usePathname();
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname.startsWith("/restaurant")) return null;
 
   return (
     <header className="site-header">
