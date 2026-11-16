@@ -20,7 +20,7 @@ const NAV_ITEMS = [
     label: "Ordenes",
     href: "/restaurant/orders",
     icon: "/icons/orders.svg",
-    activeIcon: "/icons/orders.svg",
+    activeIcon: "/icons/orders-active.svg",
   },
   {
     label: "Perfil",
