@@ -36,6 +36,11 @@ export class RegisterDto {
   phone?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  location?: string;
+
+  @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
 }

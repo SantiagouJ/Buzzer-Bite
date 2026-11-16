@@ -1,9 +1,11 @@
+import { Type } from 'class-transformer';
 import {
   IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Matches,
   MaxLength,
@@ -24,14 +26,25 @@ export class CreatePackDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsString()
+  @IsUrl(
+    { require_protocol: true, protocols: ['http', 'https'] },
+    { message: 'image_url debe ser una URL válida' },
+  )
+  image_url?: string;
+
+  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El precio original debe ser numérico con hasta 2 decimales' })
   @Min(0.01, { message: 'El precio original debe ser mayor a cero' })
   original_price!: number;
 
+  @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 }, { message: 'El precio con descuento debe ser numérico con hasta 2 decimales' })
   @Min(0.01, { message: 'El precio con descuento debe ser mayor a cero' })
   discount_price!: number;
 
+  @Type(() => Number)
   @IsInt({ message: 'El stock debe ser un número entero' })
   @Min(0, { message: 'El stock no puede ser negativo' })
   stock!: number;

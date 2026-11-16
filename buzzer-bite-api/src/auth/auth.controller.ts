@@ -9,7 +9,7 @@ import {
     UseGuards,
     ValidationPipe,
   } from '@nestjs/common';
-  import { UserRole } from './entities/user.entity';
+  import { AuthActor } from './auth-actor';
   import { AuthService } from './auth.service';
   import { LoginDto } from './dto/login.dto';
   import { RegisterDto } from './dto/register.dto';
@@ -38,10 +38,7 @@ import {
   
     @Get('me')
     @UseGuards(JwtAuthGuard)
-    me(
-      @Req()
-      request: { user: { id: string; email: string; role: UserRole } },
-    ) {
+    me(@Req() request: { user: AuthActor }) {
       return request.user;
     }
   }

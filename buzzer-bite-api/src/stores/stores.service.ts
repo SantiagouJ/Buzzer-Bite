@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FindOptionsSelect, Repository } from "typeorm";
 import { assertRole, assertSameActor } from "../auth/assert-actor";
@@ -10,8 +11,11 @@ import { NearbyStoreDto } from "./dto/nearby-store.dto";
 import { UpdateStoreDto } from "./dto/update-store.dto";
 import { StoreEntity } from "./entities/store.entity";
 import { StoreRulesService } from "./store-rules/store-rules.service";
+import { savePublicImage, type PublicImage } from "../common/public-image";
 
 const EARTH_RADIUS_KM = 6371;
+
+export type StoreImage = PublicImage;
 
 const STORE_SELECT: FindOptionsSelect<StoreEntity> = {
   id: true,
@@ -20,6 +24,7 @@ const STORE_SELECT: FindOptionsSelect<StoreEntity> = {
   latitude: true,
   longitude: true,
   category: true,
+  image_url: true,
   createdAt: true,
   user: { id: true, full_name: true },
 };
@@ -35,16 +40,20 @@ export class StoresService {
     private readonly authService: AuthService,
 
     private readonly storeRulesService: StoreRulesService,
+
+    private readonly configService: ConfigService,
   ) {}
 
   async create(
     createStoreDto: CreateStoreDto,
     actor: AuthActor,
+    image?: StoreImage,
   ): Promise<StoreEntity> {
     assertRole(actor, UserRole.MERCHANT);
     assertSameActor(actor.id, createStoreDto.user_id);
 
     const { user_id, ...storeData } = createStoreDto;
+    if (image) storeData.image_url = await this.storeImage(image);
     const user = await this.authService.findEntity(user_id);
 
     const existing = await this.storesRepository.findOneBy({
@@ -102,6 +111,7 @@ export class StoresService {
     id: string,
     updateStoreDto: UpdateStoreDto,
     actor: AuthActor,
+    image?: StoreImage,
   ): Promise<StoreEntity> {
     assertRole(actor, UserRole.MERCHANT);
     const store = await this.findOne(id);
@@ -109,6 +119,8 @@ export class StoresService {
     if (store.user?.id !== actor.id) {
       throw new ForbiddenException();
     }
+
+    if (image) updateStoreDto.image_url = await this.storeImage(image);
 
     this.storesRepository.merge(store, updateStoreDto);
     await this.storesRepository.save(store);
@@ -135,5 +147,9 @@ export class StoresService {
     const distance = 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(haversine));
 
     return Math.round(distance * 100) / 100;
+  }
+
+  private async storeImage(file: StoreImage): Promise<string> {
+    return savePublicImage(this.configService, file, "stores");
   }
 }

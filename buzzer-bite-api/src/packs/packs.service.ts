@@ -1,9 +1,11 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { assertRole } from "../auth/assert-actor";
 import { AuthActor } from "../auth/auth-actor";
 import { UserRole } from "../auth/entities/user.entity";
+import { savePublicImage, type PublicImage } from "../common/public-image";
 import { StoresService } from "../stores/stores.service";
 import { CreatePackDto } from "./dto/create-pack.dto";
 import { FilterPackDto } from "./dto/filter-pack.dto";
@@ -20,14 +22,18 @@ export class PacksService {
     private readonly storesService: StoresService,
 
     private readonly packRulesService: PackRulesService,
+
+    private readonly configService: ConfigService,
   ) {}
 
   async create(
     createPackDto: CreatePackDto,
     actor: AuthActor,
+    image?: PublicImage,
   ): Promise<PackEntity> {
     assertRole(actor, UserRole.MERCHANT);
     const { store_id, description, ...packData } = createPackDto;
+    if (image) packData.image_url = await savePublicImage(this.configService, image, "packs");
     const store = await this.storesService.findOne(store_id);
 
     if (store.user?.id !== actor.id) {
@@ -88,6 +94,7 @@ export class PacksService {
     id: string,
     updatePackDto: UpdatePackDto,
     actor: AuthActor,
+    image?: PublicImage,
   ): Promise<PackEntity> {
     assertRole(actor, UserRole.MERCHANT);
     const pack = await this.findOne(id);
@@ -118,6 +125,7 @@ export class PacksService {
     }
 
     this.packsRepository.merge(pack, updatePackDto);
+    if (image) pack.image_url = await savePublicImage(this.configService, image, "packs");
 
     return this.packsRepository.save(pack);
   }

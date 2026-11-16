@@ -4,4 +4,5 @@ export type AuthActor = {
   id: string;
   email: string;
   role: UserRole;
+  location: string | null;
 };

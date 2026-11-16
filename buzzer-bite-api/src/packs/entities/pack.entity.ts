@@ -28,6 +28,9 @@ export class PackEntity {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
+  @Column({ name: 'image_url', type: 'text', nullable: true })
+  image_url!: string | null;
+
   @Column({
     name: 'original_price',
     type: 'decimal',

@@ -90,6 +90,7 @@ describe("AuthService", () => {
     const savedUser = {
       id: "user-uuid-1",
       ...createdUser,
+      location: null,
       role: "consumer",
     } as unknown as UserEntity;
 
@@ -107,6 +108,7 @@ describe("AuthService", () => {
       password_hash: "hashed_argon2_password",
       full_name: "Sergio Arias",
       phone: "3001234567",
+      location: null,
       role: UserRole.CONSUMER,
     });
     expect(usersRepositoryMock.save).toHaveBeenCalledWith(createdUser);
@@ -115,6 +117,7 @@ describe("AuthService", () => {
       email: "sergio@buzzerbite.com",
       full_name: "Sergio Arias",
       phone: "3001234567",
+      location: null,
       role: "consumer",
     });
     expect((result as any).password_hash).toBeUndefined();

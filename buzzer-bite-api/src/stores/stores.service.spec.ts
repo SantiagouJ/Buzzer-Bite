@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { ConfigService } from "@nestjs/config";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AuthActor } from "../auth/auth-actor";
 import { AuthService } from "../auth/auth.service";
@@ -16,12 +17,14 @@ const merchant: AuthActor = {
   id: "user-uuid-1",
   email: "merchant@buzzerbite.com",
   role: UserRole.MERCHANT,
+  location: null,
 };
 
 const consumer: AuthActor = {
   id: "user-uuid-1",
   email: "consumer@buzzerbite.com",
   role: UserRole.CONSUMER,
+  location: "Cali",
 };
 
 describe("StoresService", () => {
@@ -76,6 +79,10 @@ describe("StoresService", () => {
         {
           provide: StoreRulesService,
           useValue: storeRulesServiceMock,
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn() },
         },
       ],
     }).compile();
