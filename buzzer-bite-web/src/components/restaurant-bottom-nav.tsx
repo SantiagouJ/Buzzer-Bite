@@ -26,7 +26,7 @@ const NAV_ITEMS = [
     label: "Perfil",
     href: "/restaurant/profile",
     icon: "/icons/profile.svg",
-    activeIcon: "/icons/profile.svg",
+    activeIcon: "/icons/profile-active.svg",
   },
 ] as const;
 
