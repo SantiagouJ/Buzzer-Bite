@@ -1,10 +1,90 @@
-export default function RestaurantProfilePage() {
+// importamos utilidades de servidor de nextjs para cookies y redireccion
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
+// server action para cerrar la sesion del restaurante eliminando la cookie
+async function logout() {
+  "use server";
+
+  const cookieStore = await cookies();
+  cookieStore.delete("coffee_token");
+  redirect("/login");
+}
+
+// pagina principal del perfil del restaurante
+export default async function RestaurantProfilePage() {
+  // leemos el token guardado en la cookie coffee_token
+  const cookieStore = await cookies();
+  const token = cookieStore.get("coffee_token")?.value;
+  if (!token) redirect("/login");
+
+  // consultamos tiendas packs y ordenes en paralelo desde nestjs
+  const [storesRes, packsRes, ordersRes] = await Promise.all([
+    fetch(`${process.env.BUZZER_BITE_API_URL}/stores`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).catch(() => null),
+    fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).catch(() => null),
+    fetch(`${process.env.BUZZER_BITE_API_URL}/orders`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).catch(() => null),
+  ]);
+
+  // si alguno devuelve 401 la sesion vencio y mandamos al login
+  if (
+    storesRes?.status === 401 ||
+    packsRes?.status === 401 ||
+    ordersRes?.status === 401
+  ) {
+    redirect("/login");
+  }
+
+  const storesData = storesRes?.ok ? await storesRes.json().catch(() => null) : null;
+  const packsData = packsRes?.ok ? await packsRes.json().catch(() => null) : null;
+  const ordersData = ordersRes?.ok ? await ordersRes.json().catch(() => null) : null;
+
+  const stores = Array.isArray(storesData) ? storesData : [];
+  const packs = Array.isArray(packsData) ? packsData : [];
+  const orders = Array.isArray(ordersData) ? ordersData : [];
+
+  // tomamos la tienda registrada o valores por defecto si aun no tiene
+  const store = stores[0] ?? null;
+  const storeName = store?.name || "Mi Restaurante";
+  const storeAddress = store?.address || "Cali, Colombia";
+  const storeAvatar = store?.image_url || "/images/store-avatar.png";
+
+  // calculamos las metricas reales del comercio
+  const activePacksCount = packs.filter(
+    (pack: { status?: string; stock?: number }) =>
+      pack.status === "AVAILABLE" || (pack.stock ?? 0) > 0,
+  ).length;
+
+  const claimedOrders = orders.filter(
+    (order: { status?: string }) => order.status === "CLAIMED",
+  );
+  const soldTodayCount = claimedOrders.length;
+
+  const totalEarnings = claimedOrders.reduce(
+    (acc: number, order: { total_price?: number }) =>
+      acc + Number(order.total_price ?? 0),
+    0,
+  );
+  const formattedEarnings =
+    totalEarnings >= 1000
+      ? `$${Math.round(totalEarnings / 1000)}k`
+      : `$${totalEarnings}`;
+
   return (
     <main className="mx-auto flex w-full max-w-[400px] flex-col items-start gap-3 px-5 pt-[64px] pb-28">
       <h1 className="w-full text-[26px] font-bold leading-8 tracking-[-0.3px] text-[#f3f6f4]">
         Perfil
       </h1>
 
+      {/* tarjeta superior con banner y datos del restaurante */}
       <section
         aria-label="Información del restaurante"
         className="relative flex w-full flex-col items-center overflow-hidden rounded-[28px] bg-[#1c211e] shadow-[0px_16px_32px_0px_rgba(0,0,0,0.35)]"
@@ -41,7 +121,7 @@ export default function RestaurantProfilePage() {
           <div className="flex w-full items-center justify-between pt-2">
             <div className="flex flex-col items-start gap-[2px]">
               <h2 className="text-[18px] font-semibold leading-6 tracking-[-0.1px] text-[#f3f6f4]">
-                Frisby
+                {storeName}
               </h2>
 
               <div className="flex items-center gap-1">
@@ -53,7 +133,7 @@ export default function RestaurantProfilePage() {
                   className="shrink-0"
                 />
                 <p className="text-[13px] font-normal leading-[18px] text-[#8a948d]">
-                  Av. 6 Norte #25-60, Cali
+                  {storeAddress}
                 </p>
               </div>
             </div>
@@ -62,8 +142,8 @@ export default function RestaurantProfilePage() {
 
         <div className="absolute top-[79px] left-[23px] size-[72px]">
           <img
-            src="/images/store-avatar.png"
-            alt="Frisby"
+            src={storeAvatar}
+            alt={storeName}
             width={72}
             height={72}
             className="block size-full rounded-full object-cover"
@@ -71,33 +151,41 @@ export default function RestaurantProfilePage() {
         </div>
       </section>
 
+      {/* fila de metricas reales del comercio */}
       <section
         aria-label="Métricas del restaurante"
         className="flex h-[68px] w-full items-start gap-[25px] px-[9px] whitespace-nowrap"
       >
         <div className="flex flex-col items-start gap-1 rounded-[18px] py-3">
-          <p className="text-[20px] font-semibold leading-6 text-[#f3f6f4]">2</p>
+          <p className="text-[20px] font-semibold leading-6 text-[#f3f6f4]">
+            {activePacksCount}
+          </p>
           <p className="text-[12px] font-normal leading-4 text-[#8e9892]">
             Packs Activos
           </p>
         </div>
 
         <div className="flex flex-col items-start gap-1 rounded-[18px] py-3">
-          <p className="text-[20px] font-bold leading-6 text-[#f3f6f4]">12</p>
+          <p className="text-[20px] font-bold leading-6 text-[#f3f6f4]">
+            {soldTodayCount}
+          </p>
           <p className="text-[12px] font-normal leading-4 text-[#8e9892]">
             Vendidos Hoy
           </p>
         </div>
 
         <div className="flex flex-col items-start justify-center gap-1 rounded-[18px] py-3">
-          <p className="text-[20px] font-bold leading-6 text-[#2ee07a]">$144k</p>
+          <p className="text-[20px] font-bold leading-6 text-[#2ee07a]">
+            {formattedEarnings}
+          </p>
           <p className="text-[12px] font-normal leading-4 text-[#8e9892]">
             Ganancias
           </p>
         </div>
       </section>
 
-      <form className="flex w-full items-center justify-between rounded-[18px] bg-[#1c211e] py-3 pr-3 pl-4">
+      {/* interruptor de estado de la tienda */}
+      <div className="flex w-full items-center justify-between rounded-[18px] bg-[#1c211e] py-3 pr-3 pl-4">
         <label
           htmlFor="store_open"
           className="cursor-pointer text-[15px] font-semibold leading-5 text-[#f3f6f4]"
@@ -124,9 +212,10 @@ export default function RestaurantProfilePage() {
             className="block peer-not-checked:opacity-40"
           />
         </label>
-      </form>
+      </div>
 
-      <form className="w-full">
+      {/* boton de cierre de sesion conectado a la server action logout */}
+      <form action={logout} className="w-full">
         <button
           type="submit"
           className="flex w-full cursor-pointer items-center justify-center rounded-full border border-[#29332e] bg-[#1c211e] py-[15px] text-[15px] font-semibold leading-[22px] text-[#ff8f8f]"
