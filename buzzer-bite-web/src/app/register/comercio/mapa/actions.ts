@@ -50,7 +50,7 @@ export async function saveKitchen(formData: FormData) {
   body.set("latitude", String(latitude));
   body.set("longitude", String(longitude));
   if (!current?.id) body.set("user_id", user.id);
-  if (image) body.set("image", image.blob, image.name);
+  if (image && image !== "invalid") body.set("image", image.blob, image.name);
 
   const response = await fetch(
     current?.id
@@ -64,7 +64,7 @@ export async function saveKitchen(formData: FormData) {
   ).catch(() => null);
 
   if (!response?.ok) fail();
-  redirect("/");
+  redirect("/restaurant");
 }
 
 const IMAGE_TYPES: Record<string, string> = {

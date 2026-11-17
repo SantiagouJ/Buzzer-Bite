@@ -43,6 +43,7 @@ async function login(formData: FormData) {
   }).catch(() => null);
   const user = me?.ok ? await me.json().catch(() => null) : null;
   if (user?.role === "consumer") redirect("/explorar");
+  if (user?.role === "merchant") redirect("/restaurant");
 
   redirect("/");
 }

@@ -9,7 +9,8 @@ export default function AppHeader() {
     pathname === "/" ||
     pathname === "/login" ||
     pathname.startsWith("/register") ||
-    pathname.startsWith("/explorar")
+    pathname.startsWith("/explorar") ||
+    pathname.startsWith("/restaurant")
   ) {
     return null;
   }
