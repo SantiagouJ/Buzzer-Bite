@@ -12,7 +12,11 @@ export async function saveKitchen(formData: FormData) {
   const longitude = Number(formData.get("longitude"));
 
   const back = new URLSearchParams({ name, category, city });
-  const fail = () => redirect(`/register/comercio/mapa?${back.toString()}&error=1`);
+  const fail = (detail?: string | null): never => {
+    if (detail) back.set("detail", detail.slice(0, 240));
+    back.set("error", "1");
+    redirect(`/register/comercio/mapa?${back.toString()}`);
+  };
 
   if (!name || !category || !address || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     fail();
@@ -23,7 +27,6 @@ export async function saveKitchen(formData: FormData) {
   if (!token) redirect("/login");
 
   const image = await storePhoto(formData.get("image"));
-  if (image === "invalid") fail();
 
   const me = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -50,7 +53,6 @@ export async function saveKitchen(formData: FormData) {
   body.set("latitude", String(latitude));
   body.set("longitude", String(longitude));
   if (!current?.id) body.set("user_id", user.id);
-  if (image && image !== "invalid") body.set("image", image.blob, image.name);
 
   const response = await fetch(
     current?.id
@@ -63,8 +65,40 @@ export async function saveKitchen(formData: FormData) {
     },
   ).catch(() => null);
 
-  if (!response?.ok) fail();
+  if (!response || !response.ok) {
+    const detail = await readApiMessage(response);
+    if (detail) back.set("detail", detail.slice(0, 240));
+    back.set("error", "1");
+    redirect(`/register/comercio/mapa?${back.toString()}`);
+  }
+
+  const saved = await response.json().catch(() => null);
+  const storeId = current?.id ?? (typeof saved?.id === "string" ? saved.id : "");
+
+  if (image === "invalid") redirect("/restaurant?photo=1");
+  if (image && storeId) {
+    const photoBody = new FormData();
+    photoBody.set("image", image.blob, image.name);
+    const photoResponse = await fetch(`${process.env.BUZZER_BITE_API_URL}/stores/${storeId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+      body: photoBody,
+    }).catch(() => null);
+    if (!photoResponse?.ok) redirect("/restaurant?photo=1");
+  }
+
   redirect("/restaurant");
+}
+
+async function readApiMessage(response: Response | null) {
+  const data = await response?.json().catch(() => null);
+  const message = data && typeof data === "object" ? (data as { message?: unknown }).message : null;
+  const text = Array.isArray(message)
+    ? message.filter((item): item is string => typeof item === "string").join(" ")
+    : typeof message === "string"
+      ? message
+      : "";
+  return text.replace(/\s+/g, " ").trim() || null;
 }
 
 const IMAGE_TYPES: Record<string, string> = {

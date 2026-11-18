@@ -7,7 +7,13 @@ import { canonicalCity } from "../../../../data/colombia-cities";
 import { CITY_CENTERS } from "../../../../data/city-centers";
 
 type KitchenMapPageProps = {
-  searchParams: Promise<{ name?: string; category?: string; city?: string; error?: string }>;
+  searchParams: Promise<{
+    name?: string;
+    category?: string;
+    city?: string;
+    error?: string;
+    detail?: string;
+  }>;
 };
 
 async function KitchenMapScreen({ searchParams }: KitchenMapPageProps) {
@@ -39,6 +45,7 @@ async function KitchenMapScreen({ searchParams }: KitchenMapPageProps) {
           latitude={center.latitude}
           longitude={center.longitude}
           error={params.error}
+          detail={params.detail}
         />
       )}
     </>

@@ -21,8 +21,28 @@ const PICKUP_HOURS = [
 
 // definimos los tipos de props para leer mensajes de error o exito desde la url
 type DashboardPageProps = {
-  searchParams: Promise<{ error?: string; created?: string }>;
+  searchParams: Promise<{ error?: string; created?: string; photo?: string; detail?: string }>;
 };
+
+function todayInBogota() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+async function readApiMessage(response: Response | null) {
+  const data = await response?.json().catch(() => null);
+  const message = data && typeof data === "object" ? (data as { message?: unknown }).message : null;
+  const text = Array.isArray(message)
+    ? message.filter((item): item is string => typeof item === "string").join(" ")
+    : typeof message === "string"
+      ? message
+      : "";
+  return text.replace(/\s+/g, " ").trim().slice(0, 240) || null;
+}
 
 // server action que se ejecuta en nextjs al enviar el formulario de crear pack
 async function createPack(formData: FormData) {
@@ -49,26 +69,31 @@ async function createPack(formData: FormData) {
   const storeId = store?.id;
   if (!storeId) redirect("/restaurant?error=store");
 
-  // construimos el objeto con los campos que espera el dto de nestjs
-  const payload = {
-    store_id: storeId,
-    title: packType === "Sorpresa" ? "Pack Sorpresa" : "Pack Fijo",
-    description: `Pack ${packType} disponible para retiro en tienda`,
-    original_price: Math.round(discountPrice * 1.4),
-    discount_price: discountPrice,
-    stock: stock,
-    pickup_start: pickupStart,
-    pickup_end: pickupEnd,
-  };
+  const image = await packPhoto(formData.get("image"));
+  if (image === "invalid") {
+    const params = new URLSearchParams({
+      error: "api",
+      detail: "La foto debe ser jpeg, png o webp y pesar menos de 5 MB",
+    });
+    redirect(`/restaurant?${params.toString()}`);
+  }
 
-  // enviamos la peticion post al endpoint de packs en nestjs
+  const body = new FormData();
+  body.set("store_id", storeId);
+  body.set("title", packType === "Sorpresa" ? "Pack Sorpresa" : "Pack Fijo");
+  body.set("description", `Pack ${packType} disponible para retiro en tienda`);
+  body.set("original_price", String(Math.round(discountPrice * 1.4)));
+  body.set("discount_price", String(discountPrice));
+  body.set("stock", String(stock));
+  body.set("pickup_start", pickupStart);
+  body.set("pickup_end", pickupEnd);
+  body.set("pickup_date", todayInBogota());
+  if (image) body.set("image", image.blob, image.name);
+
   const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
+    headers: { Authorization: `Bearer ${token}` },
+    body,
   }).catch(() => null);
 
   // si el backend responde 401 lo mandamos a iniciar sesion
@@ -76,13 +101,39 @@ async function createPack(formData: FormData) {
 
   // si falla la validacion o el servidor devolvio error avisamos en pantalla
   if (!response?.ok) {
-    redirect("/restaurant?error=api");
+    const detail = await readApiMessage(response);
+    const params = new URLSearchParams({ error: "api" });
+    if (detail) params.set("detail", detail);
+    redirect(`/restaurant?${params.toString()}`);
   }
 
   // refrescamos la cache de packs y tablero y redirigimos al listado de packs
   revalidatePath("/restaurant");
   revalidatePath("/restaurant/packs");
+  revalidatePath("/explorar");
   redirect("/restaurant/packs?created=1");
+}
+
+const PACK_IMAGE_TYPES: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+async function packPhoto(value: FormDataEntryValue | null) {
+  if (!value || typeof value === "string" || typeof value.arrayBuffer !== "function" || value.size <= 0) {
+    return undefined;
+  }
+
+  const name = "name" in value && typeof value.name === "string" ? value.name : "pack.jpg";
+  const extension = name.split(".").pop()?.toLowerCase() ?? "";
+  const type = value.type === "image/jpg" ? "image/jpeg" : value.type || PACK_IMAGE_TYPES[extension];
+  if (!type || !Object.values(PACK_IMAGE_TYPES).includes(type) || value.size > 5 * 1024 * 1024) {
+    return "invalid";
+  }
+
+  return { blob: new Blob([await value.arrayBuffer()], { type }), name };
 }
 
 // componente de servidor principal del tablero del restaurante
@@ -94,7 +145,7 @@ export default async function RestaurantDashboardPage({
   const store = await findOwnStore(token, userId);
 
   // leemos los parametros de la url para mostrar alertas si hubo error
-  const { error } = await searchParams;
+  const { error, photo, detail } = await searchParams;
 
   // consultamos los packs y las ordenes desde el backend en paralelo
   const [packsRes, ordersRes] = await Promise.all([
@@ -164,12 +215,17 @@ export default async function RestaurantDashboardPage({
       )}
       {error === "api" && (
         <p role="alert" className="text-[13px] font-normal leading-[18px] text-[#ff8f8f]">
-          No se pudo crear el pack verifica los datos o la conexion con el servidor
+          {detail || "No se pudo crear el pack verifica los datos o la conexion con el servidor"}
         </p>
       )}
       {error === "store" && (
         <p role="alert" className="text-[13px] font-normal leading-[18px] text-[#ff8f8f]">
           Termina el registro de tu cocina antes de publicar un pack
+        </p>
+      )}
+      {photo === "1" && (
+        <p role="alert" className="text-[13px] font-normal leading-[18px] text-[#ff8f8f]">
+          La ubicación quedó guardada. La foto no se subió porque el almacenamiento de imágenes no está configurado en la API.
         </p>
       )}
 

@@ -11,6 +11,7 @@ type KitchenMapProps = {
   latitude: number;
   longitude: number;
   error?: string;
+  detail?: string;
 };
 
 async function reverseAddress(token: string, latitude: number, longitude: number) {
@@ -36,6 +37,7 @@ export default function KitchenMap({
   latitude,
   longitude,
   error,
+  detail,
 }: KitchenMapProps) {
   const mapNode = useRef<HTMLDivElement>(null);
   const [point, setPoint] = useState({ latitude, longitude });
@@ -170,7 +172,7 @@ export default function KitchenMap({
 
       {error === "1" ? (
         <p role="alert" className="text-[13px] leading-[18px] text-[#ff8f8f]">
-          No se pudo guardar la ubicación. Revisa el punto o la conexión.
+          {detail || "No se pudo guardar la ubicación. Revisa el punto o la conexión."}
         </p>
       ) : null}
 
