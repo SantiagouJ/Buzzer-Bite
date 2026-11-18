@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import BackLink from "../../components/back-link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
@@ -36,6 +37,14 @@ async function login(formData: FormData) {
     maxAge: 15 * 60,
   });
 
+  const me = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  }).catch(() => null);
+  const user = me?.ok ? await me.json().catch(() => null) : null;
+  if (user?.role === "consumer") redirect("/explorar");
+  if (user?.role === "merchant") redirect("/restaurant");
+
   redirect("/");
 }
 
@@ -68,7 +77,8 @@ async function LoginStatus({ searchParams }: LoginPageProps) {
 export default function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className={`${inter.className} min-h-dvh bg-[#101311] text-[#f3f6f4]`}>
-      <div className="mx-auto flex w-full max-w-[400px] flex-col items-start gap-4 px-5 pt-[84px] pb-5">
+      <div className="mx-auto flex w-full max-w-[400px] flex-col items-start gap-4 px-5 pt-5 pb-5">
+        <BackLink href="/" />
         <div className="flex h-12 w-full items-start justify-center">
           <img src="/brand/logo.svg" alt="" width={48} height={45.7019} />
         </div>
@@ -99,7 +109,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               autoComplete="email"
               required
               placeholder="sarah.Hines@gmail.com"
-              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]"
+              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]/40"
             />
           </div>
 
@@ -117,7 +127,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               autoComplete="current-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]"
+              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]/40"
             />
           </div>
 
