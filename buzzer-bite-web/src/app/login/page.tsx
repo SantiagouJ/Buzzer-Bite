@@ -1,8 +1,12 @@
 import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import BackLink from "../../components/back-link";
+import SubmitButton from "../../components/submit-button";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { apiUrl, SESSION_COOKIE } from "../../lib/buzzer-api";
+import { getUserRole, homeForRole } from "../../lib/roles";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,7 +19,7 @@ async function login(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
 
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/login`, {
+  const response = await fetch(apiUrl("/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -28,7 +32,7 @@ async function login(formData: FormData) {
   if (typeof token !== "string" || !token) redirect("/login?error=1");
 
   const cookieStore = await cookies();
-  cookieStore.set("coffee_token", token, {
+  cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -36,7 +40,8 @@ async function login(formData: FormData) {
     maxAge: 15 * 60,
   });
 
-  redirect("/");
+  const role = await getUserRole(token);
+  redirect(homeForRole(role));
 }
 
 type LoginPageProps = {
@@ -68,7 +73,8 @@ async function LoginStatus({ searchParams }: LoginPageProps) {
 export default function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className={`${inter.className} min-h-dvh bg-[#101311] text-[#f3f6f4]`}>
-      <div className="mx-auto flex w-full max-w-[400px] flex-col items-start gap-4 px-5 pt-[84px] pb-5">
+      <div className="mx-auto flex w-full max-w-[400px] flex-col items-start gap-4 px-5 pt-5 pb-5">
+        <BackLink href="/" />
         <div className="flex h-12 w-full items-start justify-center">
           <img src="/brand/logo.svg" alt="" width={48} height={45.7019} />
         </div>
@@ -99,7 +105,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               autoComplete="email"
               required
               placeholder="sarah.Hines@gmail.com"
-              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]"
+              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]/40"
             />
           </div>
 
@@ -117,16 +123,15 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               autoComplete="current-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]"
+              className="w-full rounded-[18px] bg-[#1c211e] px-4 py-[14px] text-[16px] font-semibold leading-[22px] text-[#f3f6f4] outline-none placeholder:text-[#f3f6f4]/40"
             />
           </div>
 
-          <button
-            type="submit"
+          <SubmitButton
+            label="Iniciar Sesión"
+            pendingLabel="Iniciando sesión..."
             className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f3f6f4] py-4 text-[16px] font-semibold leading-[22px] text-[#0b0d0c]"
-          >
-            Iniciar Sesión
-          </button>
+          />
         </form>
 
         <Link href="/register" className="text-[13px] font-normal leading-[18px] text-[#2ee07a]">
