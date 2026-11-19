@@ -110,7 +110,7 @@ async function createPack(formData: FormData) {
   // refrescamos la cache de packs y tablero y redirigimos al listado de packs
   revalidatePath("/restaurant");
   revalidatePath("/restaurant/packs");
-  revalidatePath("/explorar");
+  revalidatePath("/usuario/explorar");
   redirect("/restaurant/packs?created=1");
 }
 

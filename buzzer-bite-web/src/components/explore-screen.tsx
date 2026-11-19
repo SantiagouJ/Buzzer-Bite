@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import CustomerTabBar from "./customer-tab-bar";
 import ExploreList from "./explore-list";
-import { exploreFavorites, nearbyStores, type ExploreFavorite, type ExploreStore } from "../app/explorar/actions";
-
-type Origin = {
-  latitude: number;
-  longitude: number;
-  source: "gps" | "city";
-};
+import { useNearbyStores } from "./use-nearby-stores";
 
 type ExploreScreenProps = {
   mapboxToken: string;
@@ -18,13 +13,6 @@ type ExploreScreenProps = {
   latitude: number;
   longitude: number;
 };
-
-const tabs = [
-  { label: "Inicio", icon: "/explorar/home.svg", href: null },
-  { label: "Explorar", icon: "/explorar/explore.svg", href: "/explorar" },
-  { label: "Favoritos", icon: "/explorar/heart.svg", href: null },
-  { label: "Perfil", icon: "/explorar/profile.svg", href: null },
-] as const;
 
 function storeInitial(name: string) {
   const letter = name.trim().charAt(0);
@@ -55,9 +43,8 @@ function pickupLabel(start: string | null, end: string | null) {
   return `${from.label} ${from.period}–${to.label} ${to.period}`;
 }
 
-function milesLabel(kilometers: number) {
-  const miles = Math.max(0.1, Math.round(kilometers * 0.621371 * 10) / 10);
-  return `${miles.toFixed(1)} mi`;
+function distanceLabel(kilometers: number) {
+  return `${Math.max(0.1, kilometers).toFixed(1)} km`;
 }
 
 function packLabel(count: number) {
@@ -75,70 +62,12 @@ export default function ExploreScreen({
   const mapRef = useRef<import("mapbox-gl").Map | null>(null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"lista" | "mapa">("mapa");
-  const [origin, setOrigin] = useState<Origin | null>(null);
-  const [favorites, setFavorites] = useState<ExploreFavorite[]>([]);
-  const [stores, setStores] = useState<ExploreStore[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const useCity = () => {
-      if (!cancelled) setOrigin({ latitude, longitude, source: "city" });
-    };
-
-    if (!navigator.geolocation) {
-      useCity();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (cancelled) return;
-        setOrigin({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          source: "gps",
-        });
-      },
-      useCity,
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [latitude, longitude]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void exploreFavorites().then((next) => {
-      if (!cancelled) setFavorites(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!origin) return;
-    let cancelled = false;
-    setLoaded(false);
-    setLoadError(false);
-
-    void nearbyStores(origin.latitude, origin.longitude).then((result) => {
-      if (cancelled) return;
-      setStores(result.stores);
-      setLoadError(!result.ok);
-      setLoaded(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [origin]);
+  const { origin, stores, favorites, setFavorites, loaded, loadError } = useNearbyStores(
+    latitude,
+    longitude,
+  );
 
   useEffect(() => {
     const node = mapNode.current;
@@ -266,7 +195,7 @@ export default function ExploreScreen({
 
   const selectedStore = visibleStores.find((store) => store.id === selectedId) ?? null;
   const selectedMeta = selectedStore
-    ? [packLabel(selectedStore.packCount), pickupLabel(selectedStore.pickupStart, selectedStore.pickupEnd), milesLabel(selectedStore.distanceKm)]
+    ? [packLabel(selectedStore.packCount), pickupLabel(selectedStore.pickupStart, selectedStore.pickupEnd), distanceLabel(selectedStore.distanceKm)]
         .filter((part): part is string => Boolean(part))
         .join(" · ")
     : "";
@@ -370,53 +299,16 @@ export default function ExploreScreen({
             ) : null}
           </div>
           <p className="text-[13px] leading-[18px] font-normal text-[#8e9892]">{selectedMeta}</p>
-          <button
-            type="button"
-            className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f3f6f4] py-[15px] text-[16px] leading-[22px] font-semibold text-[#0b0d0c]"
+          <Link
+            href={`/usuario/restaurante/${selectedStore.id}`}
+            className="flex w-full items-center justify-center rounded-full bg-[#f3f6f4] py-[15px] text-[16px] leading-[22px] font-semibold text-[#0b0d0c]"
           >
             Ver restaurante
-          </button>
+          </Link>
         </section>
       ) : null}
 
-      <nav
-        aria-label="Navegación principal"
-        className="absolute bottom-5 left-5 right-5 z-30 flex items-center justify-center gap-[25px] overflow-hidden rounded-full bg-[#232323] p-2 shadow-[0px_-4px_24px_0px_rgba(0,0,0,0.4)] backdrop-blur-[12px]"
-      >
-        {tabs.map((tab) => {
-          const content = (
-            <>
-              <img src={tab.icon} alt="" width={24} height={24} />
-              <span
-                className={`text-[12px] leading-3 font-medium ${
-                  tab.href ? "text-[#2ee07a]" : "text-[#8e9892]"
-                }`}
-              >
-                {tab.label}
-              </span>
-            </>
-          );
-
-          if (tab.href) {
-            return (
-              <Link
-                key={tab.label}
-                href={tab.href}
-                aria-current="page"
-                className="flex h-12 w-16 flex-col items-center justify-center gap-1"
-              >
-                {content}
-              </Link>
-            );
-          }
-
-          return (
-            <div key={tab.label} className="flex h-12 w-16 flex-col items-center justify-center gap-1">
-              {content}
-            </div>
-          );
-        })}
-      </nav>
+      <CustomerTabBar current="explorar" className="absolute bottom-5 left-5 right-5" />
     </div>
   );
 }

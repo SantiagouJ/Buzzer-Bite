@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import Link from "next/link";
 import BackLink from "./back-link";
 import CityInput from "./city-input";
+import SubmitButton from "./submit-button";
 import { canonicalCity } from "../data/colombia-cities";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
@@ -306,12 +307,11 @@ export default function RegisterForm({ role, searchParams }: RegisterFormProps) 
             </p>
           )}
 
-          <button
-            type="submit"
+          <SubmitButton
+            label={submit}
+            pendingLabel="Creando..."
             className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f3f6f4] py-[15px] text-[16px] font-semibold leading-[22px] text-[#0b0d0c]"
-          >
-            {submit}
-          </button>
+          />
         </form>
 
         {isMerchant ? null : (
