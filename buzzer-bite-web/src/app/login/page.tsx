@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import BackLink from "../../components/back-link";
+import SubmitButton from "../../components/submit-button";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
@@ -42,7 +43,7 @@ async function login(formData: FormData) {
     cache: "no-store",
   }).catch(() => null);
   const user = me?.ok ? await me.json().catch(() => null) : null;
-  if (user?.role === "consumer") redirect("/explorar");
+  if (user?.role === "consumer") redirect("/usuario/inicio");
   if (user?.role === "merchant") redirect("/restaurant");
 
   redirect("/");
@@ -131,12 +132,11 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             />
           </div>
 
-          <button
-            type="submit"
+          <SubmitButton
+            label="Iniciar Sesión"
+            pendingLabel="Iniciando sesión..."
             className="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#f3f6f4] py-4 text-[16px] font-semibold leading-[22px] text-[#0b0d0c]"
-          >
-            Iniciar Sesión
-          </button>
+          />
         </form>
 
         <Link href="/register" className="text-[13px] font-normal leading-[18px] text-[#2ee07a]">

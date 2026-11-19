@@ -11,6 +11,7 @@ export type ExploreStore = {
   imageUrl: string | null;
   distanceKm: number;
   packCount: number;
+  totalPackCount: number;
   fromPrice: number | null;
   pickupStart: string | null;
   pickupEnd: string | null;
@@ -24,6 +25,7 @@ export type ExploreFavorite = {
 
 type PackOffer = {
   storeId: string;
+  available: boolean;
   price: number | null;
   start: string | null;
   end: string | null;
@@ -87,6 +89,7 @@ export async function nearbyStores(latitude: number, longitude: number) {
         imageUrl: typeof store.image_url === "string" ? store.image_url : null,
         distanceKm: Number.isFinite(distanceKm) ? distanceKm : 0,
         packCount: offers.get(id)?.count ?? 0,
+        totalPackCount: offers.get(id)?.total ?? 0,
         fromPrice: offers.get(id)?.fromPrice ?? null,
         pickupStart: offers.get(id)?.pickupStart ?? null,
         pickupEnd: offers.get(id)?.pickupEnd ?? null,
@@ -172,6 +175,7 @@ function readOffers(data: unknown): PackOffer[] {
     return [
       {
         storeId,
+        available: pack.status === "AVAILABLE" && Number(pack.stock) > 0,
         price: Number.isFinite(price) ? price : null,
         start: typeof pack.pickup_start === "string" ? pack.pickup_start : null,
         end: typeof pack.pickup_end === "string" ? pack.pickup_end : null,
@@ -192,6 +196,7 @@ function offersByStore(offers: PackOffer[]) {
     string,
     {
       count: number;
+      total: number;
       fromPrice: number | null;
       pickupStart: string | null;
       pickupEnd: string | null;
@@ -202,11 +207,15 @@ function offersByStore(offers: PackOffer[]) {
   for (const offer of offers) {
     const current = summary.get(offer.storeId) ?? {
       count: 0,
+      total: 0,
       fromPrice: null,
       pickupStart: null,
       pickupEnd: null,
       packImageUrl: null,
     };
+    current.total += 1;
+    summary.set(offer.storeId, current);
+    if (!offer.available) continue;
     current.count += 1;
     if (offer.price !== null && (current.fromPrice === null || offer.price < current.fromPrice)) {
       current.fromPrice = offer.price;
@@ -220,7 +229,6 @@ function offersByStore(offers: PackOffer[]) {
     const currentEnd = current.pickupEnd ? clockMinutes(current.pickupEnd) : null;
     if (start !== null && (currentStart === null || start < currentStart)) current.pickupStart = offer.start;
     if (end !== null && (currentEnd === null || end > currentEnd)) current.pickupEnd = offer.end;
-    summary.set(offer.storeId, current);
   }
 
   return summary;
