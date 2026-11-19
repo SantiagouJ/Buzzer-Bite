@@ -1,7 +1,8 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import BackButton from "../../../../components/back-button";
 import RestaurantDetail, { type RestaurantPack } from "../../../../components/restaurant-detail";
+import { buzzerFetch } from "../../../../lib/buzzer-api";
 import { requireConsumer } from "../../session";
 
 type RestaurantPageProps = {
@@ -39,16 +40,13 @@ function readPacks(data: unknown, storeId: string): RestaurantPack[] {
 
 async function RestaurantContent({ params }: RestaurantPageProps) {
   const { id } = await params;
-  const { token, userId, center } = await requireConsumer();
+  const { userId, center } = await requireConsumer();
 
-  const headers = { Authorization: `Bearer ${token}` };
-  const api = process.env.BUZZER_BITE_API_URL;
   const [storeRes, packsRes] = await Promise.all([
-    fetch(`${api}/stores/${encodeURIComponent(id)}`, { headers, cache: "no-store" }).catch(() => null),
-    fetch(`${api}/packs`, { headers, cache: "no-store" }).catch(() => null),
+    buzzerFetch(`/stores/${encodeURIComponent(id)}`),
+    buzzerFetch("/packs"),
   ]);
 
-  if (storeRes?.status === 401) redirect("/login");
   if (storeRes?.status === 404 || storeRes?.status === 400) notFound();
   const store = record(storeRes?.ok ? await storeRes.json().catch(() => null) : null);
   if (!store || typeof store.id !== "string" || typeof store.name !== "string") {

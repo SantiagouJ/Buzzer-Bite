@@ -1,9 +1,9 @@
 // importamos utilidades de servidor de nextjs y componentes base
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { buzzerFetch, requireToken } from "../../../../lib/buzzer-api";
 
 // definimos las props para recibir el orderId y posibles errores desde la url
 type ScanOrderQrPageProps = {
@@ -14,10 +14,8 @@ type ScanOrderQrPageProps = {
 async function claimOrder(formData: FormData) {
   "use server";
 
-  // leemos el token guardado en la cookie coffee_token
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  // verificamos la sesion antes de canjear
+  await requireToken();
 
   const orderId = String(formData.get("orderId") ?? "").trim();
   const verificationCode = String(formData.get("verificationCode") ?? "").trim();
@@ -31,19 +29,11 @@ async function claimOrder(formData: FormData) {
   }
 
   // enviamos la peticion patch al endpoint de canje en nestjs
-  const response = await fetch(
-    `${process.env.BUZZER_BITE_API_URL}/orders/${orderId}/claim`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ verification_code: verificationCode }),
-    },
-  ).catch(() => null);
-
-  if (response?.status === 401) redirect("/login");
+  const response = await buzzerFetch(`/orders/${orderId}/claim`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verification_code: verificationCode }),
+  });
 
   // si el codigo no coincide o la orden ya fue reclamada devolvemos error
   if (!response?.ok) {
@@ -59,9 +49,7 @@ async function claimOrder(formData: FormData) {
 // componente asincrono que lee los parametros de la url y arma el formulario
 async function ScanFormContent({ searchParams }: ScanOrderQrPageProps) {
   // verificamos que el restaurante tenga sesion activa
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  await requireToken();
 
   const { orderId, error } = await searchParams;
 

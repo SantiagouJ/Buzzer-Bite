@@ -1,10 +1,9 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import BackLink from "../../../../components/back-link";
 import KitchenMap from "../../../../components/kitchen-map";
 import { canonicalCity } from "../../../../data/colombia-cities";
 import { CITY_CENTERS } from "../../../../data/city-centers";
+import { requireToken } from "../../../../lib/buzzer-api";
 
 type KitchenMapPageProps = {
   searchParams: Promise<{
@@ -17,8 +16,7 @@ type KitchenMapPageProps = {
 };
 
 async function KitchenMapScreen({ searchParams }: KitchenMapPageProps) {
-  const cookieStore = await cookies();
-  if (!cookieStore.get("coffee_token")?.value) redirect("/login");
+  await requireToken();
 
   const params = await searchParams;
   const city = canonicalCity(params.city ?? "") ?? "Cali";

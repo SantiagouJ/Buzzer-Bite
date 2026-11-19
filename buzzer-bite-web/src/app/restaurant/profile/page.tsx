@@ -1,29 +1,18 @@
-// importamos utilidades de servidor de nextjs para redireccion
-import { redirect } from "next/navigation";
+import { buzzerFetch } from "../../../lib/buzzer-api";
 import ProfileCard from "../../../components/profile-card";
 import { logout } from "../../logout-action";
 import { findOwnStore, requireMerchant } from "../session";
 
 // pagina principal del perfil del restaurante
 export default async function RestaurantProfilePage() {
-  // leemos el token guardado en la cookie coffee_token
+  // verificamos la sesion del comercio
   const { token, userId } = await requireMerchant();
 
   const [store, packsRes, ordersRes] = await Promise.all([
     findOwnStore(token, userId),
-    fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).catch(() => null),
-    fetch(`${process.env.BUZZER_BITE_API_URL}/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).catch(() => null),
+    buzzerFetch("/packs"),
+    buzzerFetch("/orders"),
   ]);
-
-  if (packsRes?.status === 401 || ordersRes?.status === 401) {
-    redirect("/login");
-  }
 
   const packsData = packsRes?.ok ? await packsRes.json().catch(() => null) : null;
   const ordersData = ordersRes?.ok ? await ordersRes.json().catch(() => null) : null;

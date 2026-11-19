@@ -1,27 +1,10 @@
 // importamos utilidades de servidor de nextjs y componentes base
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { buzzerFetch, requireToken } from "../../../lib/buzzer-api";
+import type { ApiPack } from "../../../types/pack";
 import { findOwnStore, requireMerchant } from "../session";
-
-// definimos la estructura que devuelve el backend para cada pack
-type ApiPack = {
-  id: string;
-  title: string;
-  description?: string | null;
-  discount_price: number | string;
-  stock: number;
-  pickup_start: string;
-  pickup_end: string;
-  status: "AVAILABLE" | "SOLD_OUT" | "EXPIRED";
-  image_url?: string | null;
-  store?: {
-    id: string;
-    category?: string;
-  };
-};
 
 // definimos los parametros que llegan por la url
 type PacksPageProps = {
@@ -32,28 +15,18 @@ type PacksPageProps = {
 async function deletePack(formData: FormData) {
   "use server";
 
-  // leemos el token de sesion desde la cookie
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  // verificamos la sesion antes de modificar
+  await requireToken();
 
   const packId = String(formData.get("packId") ?? "");
   if (!packId) return;
 
   // enviamos patch marcando el pack como expirado y stock en cero
-  const response = await fetch(
-    `${process.env.BUZZER_BITE_API_URL}/packs/${packId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status: "EXPIRED", stock: 0 }),
-    },
-  ).catch(() => null);
-
-  if (response?.status === 401) redirect("/login");
+  await buzzerFetch(`/packs/${packId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "EXPIRED", stock: 0 }),
+  });
 
   // refrescamos las pantallas de packs y tablero
   revalidatePath("/restaurant/packs");
@@ -80,7 +53,7 @@ function formatPickupWindow(start: string, end: string) {
 
 // componente asincrono que consulta la api y dibuja las pestanas y tarjetas
 async function PacksContent({ searchParams }: PacksPageProps) {
-  // verificamos la sesion con la cookie coffee_token
+  // verificamos la sesion del comercio
   const { token, userId } = await requireMerchant();
 
   // leemos el filtro de estado y avisos desde la url
@@ -94,13 +67,8 @@ async function PacksContent({ searchParams }: PacksPageProps) {
     : null;
 
   const response = packsEndpoint
-    ? await fetch(`${process.env.BUZZER_BITE_API_URL}${packsEndpoint}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      }).catch(() => null)
+    ? await buzzerFetch(packsEndpoint)
     : null;
-
-  if (response?.status === 401) redirect("/login");
 
   const data = response?.ok ? await response.json().catch(() => null) : null;
   const visiblePacks: ApiPack[] | null = storeId

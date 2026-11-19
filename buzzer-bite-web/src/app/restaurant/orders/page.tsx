@@ -1,30 +1,9 @@
 // importamos utilidades de servidor de nextjs y componentes base
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-
-// definimos el tipo de orden que devuelve el backend de nestjs
-type ApiOrder = {
-  id: string;
-  quantity: number;
-  total_price: number | string;
-  verification_code: string;
-  status: "RESERVED" | "CLAIMED" | "EXPIRED";
-  created_at: string;
-  consumer?: {
-    id: string;
-    full_name?: string;
-    email?: string;
-  };
-  pack?: {
-    id: string;
-    title: string;
-    pickup_start?: string;
-    pickup_end?: string;
-    store_id?: string;
-  };
-};
+import { buzzerFetch, requireToken } from "../../../lib/buzzer-api";
+import type { ApiOrder } from "../../../types/order";
 
 // definimos las props para leer el tab activo desde la url
 type OrdersPageProps = {
@@ -36,9 +15,7 @@ async function markOrderAsReady(formData: FormData) {
   "use server";
 
   // verificamos que exista la cookie de sesion
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  await requireToken();
 
   const orderId = String(formData.get("orderId") ?? "");
   if (!orderId) redirect("/restaurant/orders");
@@ -68,22 +45,12 @@ function formatPickupWindow(start?: string, end?: string) {
 
 // componente asincrono que consulta las ordenes reales desde nestjs
 async function OrdersContent({ searchParams }: OrdersPageProps) {
-  // leemos el token guardado en la cookie coffee_token
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
-
   // leemos si el usuario esta en la pestana pendiente o listas
   const { status, readyId } = await searchParams;
   const currentTab = status === "ready" ? "ready" : "pending";
 
   // pedimos el listado de ordenes al backend
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/orders`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
-
-  if (response?.status === 401) redirect("/login");
+  const response = await buzzerFetch("/orders");
 
   const data = response?.ok ? await response.json().catch(() => null) : null;
   const allOrders: ApiOrder[] | null = Array.isArray(data) ? data : null;

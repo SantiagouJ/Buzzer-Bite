@@ -1,8 +1,8 @@
 // importamos utilidades de servidor de nextjs y componentes base
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { buzzerFetch } from "../../../../lib/buzzer-api";
 
 // definimos las props para leer el orderId entregado desde la url
 type PickedUpPageProps = {
@@ -17,24 +17,11 @@ function formatPrice(value: number | string) {
 
 // componente asincrono que consulta el resumen real de la orden entregada
 async function PickedUpSummary({ searchParams }: PickedUpPageProps) {
-  // leemos el token guardado en la cookie coffee_token
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
-
   const { orderId } = await searchParams;
   if (!orderId) redirect("/restaurant/orders");
 
   // consultamos el detalle de la orden canjeada en nestjs
-  const response = await fetch(
-    `${process.env.BUZZER_BITE_API_URL}/orders/${orderId}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    },
-  ).catch(() => null);
-
-  if (response?.status === 401) redirect("/login");
+  const response = await buzzerFetch(`/orders/${orderId}`);
 
   const order = response?.ok ? await response.json().catch(() => null) : null;
 

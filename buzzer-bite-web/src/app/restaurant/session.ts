@@ -1,37 +1,23 @@
-import { cookies } from "next/headers";
+import "server-only";
 import { redirect } from "next/navigation";
+import { authFetch, requireToken } from "../../lib/buzzer-api";
+import { getCurrentUser } from "../../lib/roles";
+import type { OwnStore } from "../../types/store";
 
-export type OwnStore = {
-  id: string;
-  name?: string;
-  address?: string;
-  image_url?: string | null;
-  user?: { id?: string };
-};
+export type { OwnStore };
 
 export async function requireMerchant() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  const token = await requireToken();
+  const user = await getCurrentUser(token);
 
-  const me = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
+  if (!user) redirect("/login");
+  if (user.role !== "merchant") redirect("/");
 
-  if (!me?.ok) redirect("/login");
-  const user = await me.json().catch(() => null);
-  if (user?.role !== "merchant" || typeof user?.id !== "string") redirect("/");
-
-  return { token, userId: user.id as string };
+  return { token, userId: user.id };
 }
 
 export async function findOwnStore(token: string, userId: string) {
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/stores`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
-
+  const response = await authFetch(token, "/stores");
   if (response?.status === 401) redirect("/login");
   const stores = response?.ok ? await response.json().catch(() => null) : null;
   if (!Array.isArray(stores)) return null;

@@ -1,7 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { buzzerFetch, requireToken } from "../../../../lib/buzzer-api";
+import { getCurrentUser } from "../../../../lib/roles";
 
 export async function saveKitchen(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -22,25 +23,14 @@ export async function saveKitchen(formData: FormData) {
     fail();
   }
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  const token = await requireToken();
 
   const image = await storePhoto(formData.get("image"));
 
-  const me = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
+  const user = await getCurrentUser(token);
+  if (!user) redirect("/login");
 
-  if (!me?.ok) redirect("/login");
-  const user = await me.json().catch(() => null);
-  if (typeof user?.id !== "string") redirect("/login");
-
-  const storesResponse = await fetch(`${process.env.BUZZER_BITE_API_URL}/stores`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
+  const storesResponse = await buzzerFetch("/stores");
   const stores = storesResponse?.ok ? await storesResponse.json().catch(() => null) : null;
   const current = Array.isArray(stores)
     ? stores.find((store) => store?.user?.id === user.id)
@@ -54,16 +44,10 @@ export async function saveKitchen(formData: FormData) {
   body.set("longitude", String(longitude));
   if (!current?.id) body.set("user_id", user.id);
 
-  const response = await fetch(
-    current?.id
-      ? `${process.env.BUZZER_BITE_API_URL}/stores/${current.id}`
-      : `${process.env.BUZZER_BITE_API_URL}/stores`,
-    {
-      method: current?.id ? "PATCH" : "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body,
-    },
-  ).catch(() => null);
+  const response = await buzzerFetch(current?.id ? `/stores/${current.id}` : "/stores", {
+    method: current?.id ? "PATCH" : "POST",
+    body,
+  });
 
   if (!response || !response.ok) {
     const detail = await readApiMessage(response);
@@ -79,11 +63,10 @@ export async function saveKitchen(formData: FormData) {
   if (image && storeId) {
     const photoBody = new FormData();
     photoBody.set("image", image.blob, image.name);
-    const photoResponse = await fetch(`${process.env.BUZZER_BITE_API_URL}/stores/${storeId}`, {
+    const photoResponse = await buzzerFetch(`/stores/${storeId}`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
       body: photoBody,
-    }).catch(() => null);
+    });
     if (!photoResponse?.ok) redirect("/restaurant?photo=1");
   }
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { authFetch, getToken } from "../../../lib/buzzer-api";
 
 export type ExploreStore = {
   id: string;
@@ -39,26 +39,18 @@ export async function nearbyStores(latitude: number, longitude: number) {
     return { ok: false as const, stores: [] as ExploreStore[] };
   }
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
+  const token = await getToken();
   if (!token) return { ok: false as const, stores: [] as ExploreStore[] };
 
-  const url = new URL(`${process.env.BUZZER_BITE_API_URL}/stores/nearby`);
-  url.searchParams.set("latitude", String(latitude));
-  url.searchParams.set("longitude", String(longitude));
-  url.searchParams.set("radius", String(SEARCH_RADIUS_KM));
-
-  const packsUrl = new URL(`${process.env.BUZZER_BITE_API_URL}/packs`);
+  const query = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    radius: String(SEARCH_RADIUS_KM),
+  });
 
   const [response, packsResponse] = await Promise.all([
-    fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).catch(() => null),
-    fetch(packsUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).catch(() => null),
+    authFetch(token, `/stores/nearby?${query.toString()}`),
+    authFetch(token, "/packs"),
   ]);
 
   if (!response?.ok) return { ok: false as const, stores: [] as ExploreStore[] };
@@ -102,14 +94,10 @@ export async function nearbyStores(latitude: number, longitude: number) {
 }
 
 export async function exploreFavorites() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
+  const token = await getToken();
   if (!token) return [] as ExploreFavorite[];
 
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/favorites`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
+  const response = await authFetch(token, "/favorites");
   if (!response?.ok) return [] as ExploreFavorite[];
 
   const data = await response.json().catch(() => null);
@@ -131,27 +119,20 @@ export async function setStoreFavorite(input: {
   storeId: string;
   favoriteId: string | null;
 }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
+  const token = await getToken();
   if (!token || !input.userId) return { ok: false as const, favorite: null };
 
   if (input.favoriteId) {
-    const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/favorites/${input.favoriteId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => null);
+    const response = await authFetch(token, `/favorites/${input.favoriteId}`, { method: "DELETE" });
     if (!response?.ok) return { ok: false as const, favorite: null };
     return { ok: true as const, favorite: null };
   }
 
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/favorites`, {
+  const response = await authFetch(token, "/favorites", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user_id: input.userId, store_id: input.storeId }),
-  }).catch(() => null);
+  });
   if (!response?.ok) return { ok: false as const, favorite: null };
 
   const data = await response.json().catch(() => null);

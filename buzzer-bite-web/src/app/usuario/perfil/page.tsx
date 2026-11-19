@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import CustomerTabBar from "../../../components/customer-tab-bar";
 import ProfileCard from "../../../components/profile-card";
 import { logout } from "../../logout-action";
+import { buzzerFetch } from "../../../lib/buzzer-api";
 import { requireConsumer } from "../session";
 
 const RECENT_LIMIT = 5;
@@ -81,16 +82,12 @@ function formatDay(value: string) {
 }
 
 async function PerfilContent() {
-  const { token, email, homeCity: city } = await requireConsumer();
-
-  const api = process.env.BUZZER_BITE_API_URL;
-  const headers = { Authorization: `Bearer ${token}` };
-  const get = (path: string) => fetch(`${api}${path}`, { headers, cache: "no-store" }).catch(() => null);
+  const { email, homeCity: city } = await requireConsumer();
 
   const [ordersRes, packsRes, favoritesRes] = await Promise.all([
-    get("/orders"),
-    get("/packs"),
-    get("/favorites"),
+    buzzerFetch("/orders"),
+    buzzerFetch("/packs"),
+    buzzerFetch("/favorites"),
   ]);
 
   const orders = readOrders(ordersRes?.ok ? await ordersRes.json().catch(() => null) : null);

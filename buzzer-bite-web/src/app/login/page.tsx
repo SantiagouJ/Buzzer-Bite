@@ -5,6 +5,8 @@ import BackLink from "../../components/back-link";
 import SubmitButton from "../../components/submit-button";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { apiUrl, SESSION_COOKIE } from "../../lib/buzzer-api";
+import { getUserRole, homeForRole } from "../../lib/roles";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -17,7 +19,7 @@ async function login(formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
 
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/login`, {
+  const response = await fetch(apiUrl("/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -30,7 +32,7 @@ async function login(formData: FormData) {
   if (typeof token !== "string" || !token) redirect("/login?error=1");
 
   const cookieStore = await cookies();
-  cookieStore.set("coffee_token", token, {
+  cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -38,15 +40,8 @@ async function login(formData: FormData) {
     maxAge: 15 * 60,
   });
 
-  const me = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  }).catch(() => null);
-  const user = me?.ok ? await me.json().catch(() => null) : null;
-  if (user?.role === "consumer") redirect("/usuario/inicio");
-  if (user?.role === "merchant") redirect("/restaurant");
-
-  redirect("/");
+  const role = await getUserRole(token);
+  redirect(homeForRole(role));
 }
 
 type LoginPageProps = {

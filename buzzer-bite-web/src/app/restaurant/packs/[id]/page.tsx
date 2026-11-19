@@ -1,9 +1,9 @@
 // importamos utilidades de servidor de nextjs y el contador cliente
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { buzzerFetch, requireToken } from "../../../../lib/buzzer-api";
 import PackStockStepper from "../../../../components/pack-stock-stepper";
 
 // definimos las props con el parametro dinamico id de la carpeta [id]
@@ -15,10 +15,8 @@ type EditPackPageProps = {
 async function updateOrDeletePack(formData: FormData) {
   "use server";
 
-  // leemos el token guardado en la cookie
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
+  // verificamos la sesion antes de modificar
+  await requireToken();
 
   const packId = String(formData.get("pack_id") ?? "");
   const intent = String(formData.get("intent") ?? "save");
@@ -37,19 +35,11 @@ async function updateOrDeletePack(formData: FormData) {
       };
 
   // enviamos la peticion patch al endpoint update del backend
-  const response = await fetch(
-    `${process.env.BUZZER_BITE_API_URL}/packs/${packId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    },
-  ).catch(() => null);
-
-  if (response?.status === 401) redirect("/login");
+  await buzzerFetch(`/packs/${packId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
   // refrescamos las vistas afectadas y volvemos al listado de packs
   revalidatePath("/restaurant/packs");
@@ -80,21 +70,8 @@ async function EditPackDetail({ params }: EditPackPageProps) {
   // resolvemos el parametro dinamico de la url
   const { id } = await params;
 
-  // leemos la cookie de sesion
-  const cookieStore = await cookies();
-  const token = cookieStore.get("coffee_token")?.value;
-  if (!token) redirect("/login");
-
   // consultamos el pack especifico en nestjs
-  const response = await fetch(
-    `${process.env.BUZZER_BITE_API_URL}/packs/${id}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    },
-  ).catch(() => null);
-
-  if (response?.status === 401) redirect("/login");
+  const response = await buzzerFetch(`/packs/${id}`);
   if (!response?.ok) redirect("/restaurant/packs");
 
   const pack = await response.json().catch(() => null);

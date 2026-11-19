@@ -1,6 +1,7 @@
 // importamos utilidades de servidor de nextjs para cookies redireccion y cache
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { buzzerFetch } from "../../lib/buzzer-api";
 import { findOwnStore, requireMerchant } from "./session";
 
 // arreglo fijo con las horas disponibles para los selectores de recogida
@@ -90,14 +91,8 @@ async function createPack(formData: FormData) {
   body.set("pickup_date", todayInBogota());
   if (image) body.set("image", image.blob, image.name);
 
-  const response = await fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body,
-  }).catch(() => null);
-
-  // si el backend responde 401 lo mandamos a iniciar sesion
-  if (response?.status === 401) redirect("/login");
+  // buzzerFetch manda a /login si el backend responde 401
+  const response = await buzzerFetch("/packs", { method: "POST", body });
 
   // si falla la validacion o el servidor devolvio error avisamos en pantalla
   if (!response?.ok) {
@@ -149,20 +144,9 @@ export default async function RestaurantDashboardPage({
 
   // consultamos los packs y las ordenes desde el backend en paralelo
   const [packsRes, ordersRes] = await Promise.all([
-    fetch(`${process.env.BUZZER_BITE_API_URL}/packs`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).catch(() => null),
-    fetch(`${process.env.BUZZER_BITE_API_URL}/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).catch(() => null),
+    buzzerFetch("/packs"),
+    buzzerFetch("/orders"),
   ]);
-
-  // si alguno responde 401 la sesion expiro y redirigimos al login
-  if (packsRes?.status === 401 || ordersRes?.status === 401) {
-    redirect("/login");
-  }
 
   // convertimos las respuestas a arreglos seguros
   const packsData = packsRes?.ok ? await packsRes.json().catch(() => null) : null;

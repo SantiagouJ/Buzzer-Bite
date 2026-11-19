@@ -7,6 +7,7 @@ import SubmitButton from "./submit-button";
 import { canonicalCity } from "../data/colombia-cities";
 import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
+import { apiUrl, SESSION_COOKIE } from "../lib/buzzer-api";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,7 +45,7 @@ type RegisterPayload = {
 };
 
 async function postRegister(payload: RegisterPayload) {
-  return fetch(`${process.env.BUZZER_BITE_API_URL}/auth/register`, {
+  return fetch(apiUrl("/auth/register"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -107,7 +108,7 @@ async function register(formData: FormData) {
 
   if (role === "merchant") {
     const category = String(formData.get("category") ?? "").trim();
-    const loginResponse = await fetch(`${process.env.BUZZER_BITE_API_URL}/auth/login`, {
+    const loginResponse = await fetch(apiUrl("/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -120,7 +121,7 @@ async function register(formData: FormData) {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set("coffee_token", token, {
+    cookieStore.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
